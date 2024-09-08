@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 class Task {
   String description;
@@ -8,14 +8,14 @@ class Task {
   Task(this.description, {this.isCompleted = false});
 
   Map<String, dynamic> toJson() => {
-    'description': description,
-    'isCompleted': isCompleted,
-  };
+        'description': description,
+        'isCompleted': isCompleted,
+      };
 
   factory Task.fromJson(Map<String, dynamic> json) => Task(
-    json['description'],
-    isCompleted: json['isCompleted'],
-  );
+        json['description'] as String,
+        isCompleted: json['isCompleted'] as bool,
+      );
 }
 
 class TodoApp {
@@ -29,22 +29,25 @@ class TodoApp {
   void loadTasks() {
     final file = File(fileName);
     if (file.existsSync()) {
-      final contents = file.readAsStringSync();
-      final jsonList = json.decode(contents) as List;
-      tasks = jsonList.map((taskJson) => Task.fromJson(taskJson)).toList();
+      try {
+        final jsonString = file.readAsStringSync();
+        final jsonList = json.decode(jsonString) as List;
+        tasks = jsonList.map((jsonTask) => Task.fromJson(jsonTask)).toList();
+      } catch (e) {
+        print('Error reading file: $e');
+      }
     }
   }
 
   void saveTasks() {
-    final file = File(fileName);
     final jsonList = tasks.map((task) => task.toJson()).toList();
-    file.writeAsStringSync(json.encode(jsonList));
+    final jsonString = json.encode(jsonList);
+    File(fileName).writeAsStringSync(jsonString);
   }
 
   void addTask(String description) {
     tasks.add(Task(description));
     saveTasks();
-    print('Task added: $description');
     listTasks();
   }
 
@@ -52,13 +55,13 @@ class TodoApp {
     if (tasks.isEmpty) {
       print('No tasks.');
     } else {
-      print('\nCurrent tasks:');
-      for (int i = 0; i < tasks.length; i++) {
+      print('');
+      for (var i = 0; i < tasks.length; i++) {
         final task = tasks[i];
         final status = task.isCompleted ? '[X]' : '[ ]';
         print('${i + 1}. $status ${task.description}');
       }
-      print('');  // Add an empty line for better readability
+      print('');
     }
   }
 
@@ -66,8 +69,6 @@ class TodoApp {
     if (index >= 0 && index < tasks.length) {
       tasks[index].isCompleted = !tasks[index].isCompleted;
       saveTasks();
-      final status = tasks[index].isCompleted ? "completed" : "incomplete";
-      print('Marked task as $status: ${tasks[index].description}');
       listTasks();
     } else {
       print('Invalid task number.');
@@ -76,9 +77,8 @@ class TodoApp {
 
   void removeTask(int index) {
     if (index >= 0 && index < tasks.length) {
-      final removedTask = tasks.removeAt(index);
+      tasks.removeAt(index);
       saveTasks();
-      print('Removed task: ${removedTask.description}');
       listTasks();
     } else {
       print('Invalid task number.');
@@ -90,7 +90,6 @@ class TodoApp {
       final task = tasks.removeAt(index);
       tasks.insert(index - 1, task);
       saveTasks();
-      print('Moved task up: ${task.description}');
       listTasks();
     } else {
       print('Cannot move task up.');
@@ -102,7 +101,6 @@ class TodoApp {
       final task = tasks.removeAt(index);
       tasks.insert(index + 1, task);
       saveTasks();
-      print('Moved task down: ${task.description}');
       listTasks();
     } else {
       print('Cannot move task down.');
@@ -114,7 +112,6 @@ class TodoApp {
       final oldDescription = tasks[index].description;
       tasks[index].description = newDescription;
       saveTasks();
-      print('Renamed task:');
       print('  From: $oldDescription');
       print('  To:   $newDescription');
       listTasks();
@@ -126,6 +123,7 @@ class TodoApp {
   void processCommand(String command) {
     final parts = command.split(' ');
     final action = parts[0].toLowerCase();
+
     switch (action) {
       case 'a':
         if (parts.length > 1) {
@@ -134,10 +132,10 @@ class TodoApp {
           print('Usage: a <task description>');
         }
         break;
-      case 'l':
+      case 't':
         listTasks();
         break;
-      case 'm':
+      case 'x':
         if (parts.length > 1) {
           final taskNumber = int.tryParse(parts[1]);
           if (taskNumber != null) {
@@ -146,10 +144,10 @@ class TodoApp {
             print('Invalid task number.');
           }
         } else {
-          print('Usage: m <task number>');
+          print('Usage: x <task number>');
         }
         break;
-      case 'x':
+      case 'd':
         if (parts.length > 1) {
           final taskNumber = int.tryParse(parts[1]);
           if (taskNumber != null) {
@@ -158,10 +156,10 @@ class TodoApp {
             print('Invalid task number.');
           }
         } else {
-          print('Usage: x <task number>');
+          print('Usage: d <task number>');
         }
         break;
-      case 'u':
+      case 'h':
         if (parts.length > 1) {
           final taskNumber = int.tryParse(parts[1]);
           if (taskNumber != null) {
@@ -170,10 +168,10 @@ class TodoApp {
             print('Invalid task number.');
           }
         } else {
-          print('Usage: u <task number>');
+          print('Usage: h <task number>');
         }
         break;
-      case 'd':
+      case 'l':
         if (parts.length > 1) {
           final taskNumber = int.tryParse(parts[1]);
           if (taskNumber != null) {
@@ -182,7 +180,7 @@ class TodoApp {
             print('Invalid task number.');
           }
         } else {
-          print('Usage: d <task number>');
+          print('Usage: l <task number>');
         }
         break;
       case 'r':
@@ -199,34 +197,31 @@ class TodoApp {
         }
         break;
       case 'q':
-        print('Goodbye!');
         exit(0);
-      case 'h':
+      case '?':
         printHelp();
         break;
       default:
-        print('Unknown command. Type "h" for help.');
+        print('Unknown command. Type "?" for help.');
     }
   }
 
   void printHelp() {
     print('Available commands:');
     print('  a <task description> - Add a new task');
-    print('  l - List all tasks');
-    print('  m <task number> - Mark task as complete/incomplete');
-    print('  x <task number> - Remove task');
-    print('  u <task number> - Move task up');
-    print('  d <task number> - Move task down');
+    print('  t - List all tasks');
+    print('  x <task number> - Mark task as complete/incomplete');
+    print('  d <task number> - Remove task');
+    print('  h <task number> - Move task higher');
+    print('  l <task number> - Move task lower');
     print('  r <task number> <new description> - Rename task');
-    print('  h - Show this help message');
+    print('  ? - Show this help message');
     print('  q - Quit the application');
   }
 
   void run() {
-    print('Welcome to the Dart To-Do App!');
-    print('Type "h" for help or "q" to quit.');
-    listTasks();  // Display tasks at the start
-    
+    listTasks(); // Display tasks at the start
+
     while (true) {
       stdout.write('> ');
       final input = stdin.readLineSync();
